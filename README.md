@@ -33,6 +33,12 @@ aims to provide an Om native solution to your better-than-select input needs.
 More recently Facebook released fixed-data-table which provides an efficient 
 component for large tables of data.  We use this in our solution.
 
+## Documentation
+
+Please see this [Google Doc](https://docs.google.com/a/condense.com.au/document/d/1LfdY2gxhAQWOBoB3YDIi10grwYYGEqeHOZDwEccdrbg/edit#) for the current API documentation.  Feel free to comment if
+you have a suggestion to improve the documentation but use GitHub repo issues for
+feature requests and bugs.
+
 ## Setup
 
 Builds can use:
