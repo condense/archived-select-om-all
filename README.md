@@ -1,6 +1,8 @@
 # select-om-all
 
-Flexible select-style component for use in Om apps
+Flexible select-style component for use in Om apps.
+
+See it in action: http://www.condense.com.au/select-om-all/demo/
 
 ## Overview
 
