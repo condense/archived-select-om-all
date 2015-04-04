@@ -93,7 +93,7 @@
         (go-loop []
           (when-let [choice (<! autocompleter)]
             (when-let [on-change (om/get-props owner :on-change)]
-              (on-change choice))
+              (on-change (if array? choice (first choice))))
             (>! (:choice state)
                 (reset! current-choice
                         (if (= :select-om-all.logic/none choice)
@@ -115,7 +115,7 @@
                 _ (>! ctrl [:initial-loading false])]
             (when choice
               (when-let [on-change (om/get-props owner :on-change)]
-                (on-change choice))
+                (on-change (if array? choice (first choice))))
               (>! (om/get-state owner :choice)
                   (reset! (om/get-state owner :current-choice) choice)))))))
     om/IRender
