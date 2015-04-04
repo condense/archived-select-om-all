@@ -33,6 +33,7 @@
 
 (defn App [{:keys [choice1 choice2 hl1 hl2] :as props} owner]
   (reify
+    om/IDisplayName (display-name [_] "App")
     om/IRender
     (render [_]
       (html

@@ -23,6 +23,7 @@
 
 (defn Input [{:keys [placeholder editable? default]} owner]
   (reify
+    om/IDisplayName (display-name [_] "AutoComplete Input")
     om/IDidMount
     (did-mount [_]
       (let [ch (a/tap (om/get-state owner :choice*) (a/chan))]

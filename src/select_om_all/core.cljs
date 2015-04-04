@@ -78,6 +78,7 @@
                             list-component FDTList}
                      :as props} owner]
   (reify
+    om/IDisplayName (display-name [_] "AutoComplete")
     om/IInitState
     (init-state [_]
       (let [completions (make-completions owner completions search-fn array?)

@@ -30,6 +30,7 @@
 
 (defn Popup [{:keys [anchor popup show resize]} owner]
   (reify
+    om/IDisplayName (display-name [_] "Popup")
     om/IDidMount
     (did-mount [_]
       (->> anchor component->node s/getSize .-width

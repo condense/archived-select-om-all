@@ -54,6 +54,7 @@
 
 (defn FDTList [{:keys [flex on-highlight] :or {on-highlight identity}} owner]
   (reify
+    om/IDisplayName (display-name [_] "AutoComplete Table")
     om/IDidMount
     (did-mount [_]
       (let [ch (a/tap (om/get-state owner :list-ctrl*) (chan))]
