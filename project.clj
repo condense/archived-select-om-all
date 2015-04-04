@@ -9,7 +9,7 @@
                  [org.omcljs/om "0.8.8"]
                  [sablono "0.3.4"]
                  [cljsjs/fixed-data-table "0.1.2-1"]
-                 [figwheel "0.2.5"]]
+                 [figwheel "0.2.5" :scope "test"]]
 
   :plugins [[lein-cljsbuild "1.0.5"]
             [lein-figwheel "0.2.5"]]
@@ -18,20 +18,10 @@
 
   :clean-targets ["out" "out/select-om-all.js"]
 
-  :cljsbuild {
-    :builds [{:id "dev"
-              :source-paths ["src"]
-              :compiler {
-                :main select-om-all.example
-                :output-to "out/select-om-all.js"
-                :output-dir "out"
-                :optimizations :none
-                :cache-analysis true
-                :source-map true}}
-             {:id "basics"
-              :source-paths ["src" "examples/basics/src"]
-              :compiler {
-                         :output-to "examples/basics/main.js"
-                         :output-dir "examples/basics/out"
-                         :source-map true
-                         :optimizations :none}}]})
+  :cljsbuild {:builds [{:id           "basics"
+                        :source-paths ["src" "examples/basics/src"]
+                        :compiler     {
+                                       :output-to     "examples/basics/main.js"
+                                       :output-dir    "examples/basics/out"
+                                       :source-map    true
+                                       :optimizations :none}}]})

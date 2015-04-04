@@ -5,6 +5,8 @@ pom.xml.asc
 /classes/
 /target/
 /checkouts/
+/examples/basics/out
+/examples/basics/main.js
 .lein-deps-sum
 .lein-repl-history
 .lein-plugins/
@@ -13,3 +15,4 @@ pom.xml.asc
 .DS_Store
 .idea
 *.iml
+/*-init.clj
