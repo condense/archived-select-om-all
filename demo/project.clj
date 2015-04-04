@@ -19,8 +19,7 @@
     :builds [{:id "demo"
               :source-paths ["src"]
               :compiler {
-                :output-to "out/demo.js"
+                :output-to "demo.js"
                 :output-dir "out"
-                :optimizations :none
-                :cache-analysis true
-                :source-map true}}]})
+                :optimizations :advanced
+                :cache-analysis true}}]})
