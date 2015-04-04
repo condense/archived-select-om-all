@@ -9,7 +9,8 @@
                  [org.omcljs/om "0.8.8"]
                  [sablono "0.3.4"]
                  [cljsjs/fixed-data-table "0.1.2-1"]
-                 [figwheel "0.2.5" :scope "test"]]
+                 [figwheel "0.2.5" :scope "test"]
+                 [precursor/om-i "0.1.7" :scope "test"]]
 
   :plugins [[lein-cljsbuild "1.0.5"]
             [lein-figwheel "0.2.5"]]
