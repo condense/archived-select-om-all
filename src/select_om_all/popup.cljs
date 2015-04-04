@@ -11,38 +11,28 @@
             [sablono.core :refer-macros [html]]))
 
 (defn show-popup [popup anchor show?]
-  (.setVisible popup false)
-  (when show?
-    (.setPinnedCorner popup corner/TOP_LEFT)
-    (.setPosition popup (goog.positioning.AnchoredViewportPosition.
-                         anchor corner/BOTTOM_LEFT))
-    (.setVisible popup true)))
+  (if show?
+    (do
+      (.setPinnedCorner popup corner/TOP_LEFT)
+      (.setPosition popup (goog.positioning.AnchoredViewportPosition.
+                           anchor corner/BOTTOM_LEFT))
+      (.setVisible popup true))
+    (.setVisible popup false)))
 
-(defn component->owner
-  "DANGER: get owner of Om component."
-  [c]
-  (.. c -props -children -owner))
-
-(defn component->node
-  "DANGER: get node of Om component."
-  [c]
-  (om/get-node (component->owner c)))
-
-(defn Popup [{:keys [anchor popup show resize]} owner]
+(defn Popup [{:keys [show resize parent] :as props} owner]
   (reify
     om/IDisplayName (display-name [_] "Popup")
     om/IDidMount
     (did-mount [_]
-      (->> anchor component->node s/getSize .-width
-           (om/set-state! (component->owner popup) :width))
-      (let [anchor (component->node anchor)
-            popup (goog.ui.Popup. (component->node popup))
+      (let [anchor (om/get-node owner "anchor")
+            popup (goog.ui.Popup. (om/get-node owner "popup"))
             reposition #(when (.isVisible popup) (.reposition popup))]
+        (->> anchor s/getSize .-width (om/set-state! parent :width))
         (doto popup
           (.setVisible false)
           (.setAutoHide false)
           (.setHideOnEscape false))
-        (om/set-state! owner {:resize reposition})
+        (om/set-state! owner {:reposition reposition})
         (e/listen js/window et/RESIZE reposition)
         (go-loop []
           (let [[e c] (alts! [show resize])]
@@ -51,6 +41,14 @@
             (recur)))))
     om/IWillUnmount
     (will-unmount [_]
-      (e/unlisten js/window et/RESIZE (om/get-state owner :resize)))
+      (e/unlisten js/window et/RESIZE (om/get-state owner :reposition)))
     om/IRender
-    (render [_] (html [:div anchor popup]))))
+    (render [_]
+      (html
+       [:div
+        [:div {:ref "anchor"} (:anchor props)]
+        [:div {:ref   "popup"
+               :style {:visibility "hidden"
+                       :position   "absolute"
+                       :z-index    9000}}
+         (:popup props)]]))))

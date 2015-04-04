@@ -12,7 +12,7 @@
             [select-om-all.list :refer [FDTList]]
             [select-om-all.popup :refer [Popup]]
             [select-om-all.utils :refer [key->keyword TAB KEYS
-                                        default-local-search]]))
+                                         default-local-search]]))
 
 (enable-console-print!)
 
@@ -126,4 +126,5 @@
                          {:anchor (om/build input-component props {:state state})
                           :popup  (om/build list-component props {:state state})
                           :show   (:pop state)
-                          :resize (:resize state)})])))))
+                          :resize (:resize state)
+                          :parent owner})])))))

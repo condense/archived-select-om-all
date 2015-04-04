@@ -65,7 +65,7 @@
               [:set-items v] (om/set-state! owner :items v)
               [:highlight n] (do (om/set-state! owner :highlighted n)
                                  (on-highlight
-                                   (first (om/get-state owner [:items n]))))
+                                  (first (om/get-state owner [:items n]))))
               [:unhighlight n] (do (om/set-state! owner :highlighted nil)
                                    (on-highlight nil))
               [:loading x] (om/set-state! owner :loading? x)
@@ -83,32 +83,29 @@
                              current-choice width]}]
       ;(a/put! (om/get-state owner :resize) true)
       (html
-       [:div {:style {:visibility "hidden"
-                      :position   "absolute"
-                      :z-index    9000}}
-        (if (or loading? (zero? (count items)))
-          [:div {:style {:border           "solid 1px #d3d3d3"
-                         :width            width
-                         :background-color "white"}}
-           (if loading? "Loading..." "No results")]
-          [:div
-           {:on-mouse-enter #(reset! hold? true)
-            :on-mouse-leave #(do (reset! hold? false) true)
-            :on-key-down    (partial handle-key-down keycodes selecting? hold?)
-            :on-blur        #(do (put! blur :blur) true)
-            :on-mouse-up    #(do (put! refocus true) true)}
-           (apply Table #js {:width       width
-                             :maxHeight   200
-                             :rowGetter   #(get items %)
-                             :rowsCount   (count items)
-                             :scrollToRow highlighted
-                             :rowHeight   32}
-                  (let [r (partial cell-renderer hover highlighted current-choice
-                                   mousedown mouseup)]
-                    (map #(Column #js {:dataKey        %
-                                       :cellRenderer   r
-                                       :cellDataGetter cell-getter
-                                       :flexGrow       (get flex % 1)
-                                       :width          1})
-                         (-> items first count range))))])]))))
+       (if (or loading? (zero? (count items)))
+         [:div {:style {:border           "solid 1px #d3d3d3"
+                        :width            width
+                        :background-color "white"}}
+          (if loading? "Loading..." "No results")]
+         [:div
+          {:on-mouse-enter #(reset! hold? true)
+           :on-mouse-leave #(do (reset! hold? false) true)
+           :on-key-down    (partial handle-key-down keycodes selecting? hold?)
+           :on-blur        #(do (put! blur :blur) true)
+           :on-mouse-up    #(do (put! refocus true) true)}
+          (apply Table #js {:width       width
+                            :maxHeight   200
+                            :rowGetter   #(get items %)
+                            :rowsCount   (count items)
+                            :scrollToRow highlighted
+                            :rowHeight   32}
+                 (let [r (partial cell-renderer hover highlighted current-choice
+                                  mousedown mouseup)]
+                   (map #(Column #js {:dataKey        %
+                                      :cellRenderer   r
+                                      :cellDataGetter cell-getter
+                                      :flexGrow       (get flex % 1)
+                                      :width          1})
+                        (-> items first count range))))])))))
 
