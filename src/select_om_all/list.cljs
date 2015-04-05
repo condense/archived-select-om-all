@@ -52,9 +52,7 @@
          ;; when blank put nbsp to prevent cell collapse and bad bg coloring
          (if (blank? cell-data) " " cell-data)]))
 
-(defn FDTList [{:keys [flex on-highlight get-cols]
-                :or {on-highlight identity
-                     get-cols identity}} owner]
+(defn FDTList [{:keys [flex on-highlight] :or {on-highlight identity}} owner]
   (reify
     om/IDisplayName (display-name [_] "AutoComplete Table")
     om/IDidMount
@@ -98,7 +96,7 @@
            :on-mouse-up    #(do (put! refocus true) true)}
           (apply Table #js {:width       width
                             :maxHeight   200
-                            :rowGetter   #(get-cols (get items %))
+                            :rowGetter   #(get items %)
                             :rowsCount   (count items)
                             :scrollToRow highlighted
                             :rowHeight   32}
@@ -109,5 +107,5 @@
                                       :cellDataGetter cell-getter
                                       :flexGrow       (get flex % 1)
                                       :width          1})
-                        (-> items first get-cols count range))))])))))
+                        (-> items first count range))))])))))
 
