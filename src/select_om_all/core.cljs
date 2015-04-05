@@ -72,7 +72,7 @@
              query)))))
 
 (defn AutoComplete [{:keys [search-fn completions throttle array? editable?
-                            input-component list-component default]
+                            input-component list-component default display-fn]
                      :or   {throttle 100
                             input-component Input
                             list-component FDTList}
@@ -96,9 +96,11 @@
               (on-change (if array? choice (first choice))))
             (>! (:choice state)
                 (reset! current-choice
-                        (if (= :select-om-all.logic/none choice)
-                          ""
-                          (first choice))))
+                        (cond
+                          (= :select-om-all.logic/none choice) ""
+                          display-fn (display-fn choice)
+                          array? (second choice)
+                          :else (first choice))))
             (recur)))
         (assoc state
                :pop (a/tap list-ctrl*
