@@ -43,12 +43,11 @@
                                   (put! hover row-index)
                                   (put! mouseup row-index)
                                   true)
-               :style          {:cursor "pointer"
-                                :background-color
-                                (cond
-                                  (= (first row-data) @current-choice) "#8888ee"
-                                  (= row-index highlighted) "#eeee00"
-                                  :else nil)}}
+               :style          {:cursor "pointer"}
+               :class          (cond
+                                 (= (first row-data) @current-choice) "bg-primary"
+                                 (= row-index highlighted) "bg-info"
+                                 :else nil)}
          ;; when blank put nbsp to prevent cell collapse and bad bg coloring
          (if (blank? cell-data) " " cell-data)]))
 
