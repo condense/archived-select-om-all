@@ -2,6 +2,7 @@
   (:require-macros [cljs.core.async.macros :refer [go-loop]])
   (:require [cljs.core.async :refer [<! put!] :as a]
             [cljs.core.match :refer-macros [match]]
+            [clojure.string :refer [blank?]]
             [om.core :as om]
             [sablono.core :refer-macros [html]]
             [select-om-all.utils :refer [handle-key-down ESC]]))
@@ -21,31 +22,20 @@
 
 ;;; Default input component implementation
 
-(defn Input [{:keys [placeholder editable? default]} owner]
+(defn Input [{:keys [placeholder editable? default display-fn edit-fn]
+              :or   {display-fn identity
+                     edit-fn identity}} owner]
   (reify
     om/IDisplayName (display-name [_] "AutoComplete Input")
     om/IDidMount
     (did-mount [_]
-      (let [ch (a/tap (om/get-state owner :choice*) (a/chan))]
-        (go-loop []
-          (when-let [s (<! ch)]
-            (set! (.-value (om/get-node owner "input")) s)
-            (recur))))
-      (let [ch (a/tap (om/get-state owner :list-ctrl*) (a/chan))]
-        (go-loop []
-          (when-let [e (<! ch)]
-            (match e
-              [:initial-loading x] (om/set-state! owner :initial-loading? x)
-              [:show x] (om/set-state! owner :open? x)
-              :else nil)
-            (recur))))
       (go-loop []
         (when-let [_ (<! (om/get-state owner :refocus))]
           (.focus (om/get-node owner "input"))
           (recur))))
     om/IRenderState
     (render-state [_ {:keys [focus blur input keycodes hold? selecting?
-                             initial-loading? refocus open? current-choice
+                             initial-loading? refocus open? value typing
                              autocompleter]}]
       (let [id (str (gensym))]
         (html
@@ -58,12 +48,14 @@
             :type           "text"
             :placeholder    (if initial-loading? "Loading..." placeholder)
             :disabled       initial-loading?
-            :default-value  default
-            :on-focus       (fn [e]
+            :default-value  (display-fn default)
+            :value          (let [v (if (= value :select-om-all.logic/none)
+                                      "" (display-fn value))]
+                              (if open? (or typing v) v))
+            :on-focus       (fn [_]
                               (when-not open?
                                 (put! focus :focus)
-                                (when-not editable?
-                                  (put! input "")))
+                                (when-not editable? (put! input "")))
                               true)
             :on-mouse-up    (fn [e]
                               (when-not editable?
@@ -71,19 +63,29 @@
                                   (.setSelectionRange
                                    t 0 (.. t -value -length)))))
             :on-mouse-down  (when-not editable?
-                              (fn [e]
+                              (fn [_]
                                 (if open?
                                   (put! keycodes ESC)
                                   (put! input ""))
                                 true))
             :on-blur        #(do
                                (when editable?
-                                 (put! autocompleter [(.. % -target -value)]))
+                                 (put! autocompleter (edit-fn (.. % -target -value))))
                                (put! blur :blur) true)
-            :on-input       #(do (put! input (.. % -target -value)) true)
+            :on-input       #(let [v (.. % -target -value)]
+                               (put! input v)
+                               (om/set-state! owner :typing v)
+                               true)
             :on-key-down    (partial handle-key-down keycodes selecting? hold?)
             :on-mouse-enter #(reset! hold? true)
             :on-mouse-leave #(do (reset! hold? false) true)}]
+          (when-not (or open? (blank? value) (= :select-om-all.logic/none value))
+            [:span.glyphicon.glyphicon-remove.form-control-feedback
+             {:style {:right          34
+                      :pointer-events "inherit"
+                      :cursor         "pointer"}
+              :on-mouse-down
+              #(put! autocompleter :select-om-all.logic/none)}])
           [:span.glyphicon.form-control-feedback
            {:class (str "glyphicon-chevron-" (if open? "up" "down"))
             :style {:pointer-events "inherit"
@@ -94,7 +96,9 @@
                 (reset! hold? false)
                 (do
                   (if editable?
-                    (put! input @current-choice)
+                    (put! input
+                          (if (= value :select-om-all.logic/none)
+                            "" (display-fn value)))
                     (let [t (om/get-node owner "input")]
                       (.setSelectionRange t 0 (.. t -value -length))))
                   (put! refocus true)))

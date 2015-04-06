@@ -10,7 +10,7 @@
             [om.core :as om]
             [sablono.core :refer-macros [html]]))
 
-(defn show-popup [popup anchor show?]
+(defn toggle-popup [popup anchor show?]
   (if show?
     (do
       (.setPinnedCorner popup corner/TOP_LEFT)
@@ -19,7 +19,9 @@
       (.setVisible popup true))
     (.setVisible popup false)))
 
-(defn Popup [{:keys [show resize parent] :as props} owner]
+(defn Popup [{:keys [open? resize-ch set-width-fn]
+              :or {set-width-fn identity}
+              :as props} owner]
   (reify
     om/IDisplayName (display-name [_] "Popup")
     om/IDidMount
@@ -27,18 +29,23 @@
       (let [anchor (om/get-node owner "anchor")
             popup (goog.ui.Popup. (om/get-node owner "popup"))
             reposition #(when (.isVisible popup) (.reposition popup))]
-        (->> anchor s/getSize .-width (om/set-state! parent :width))
+        (-> anchor s/getSize .-width set-width-fn)
         (doto popup
           (.setVisible false)
           (.setAutoHide false)
           (.setHideOnEscape false))
-        (om/set-state! owner {:reposition reposition})
+        (om/set-state! owner {:reposition reposition
+                              :instance popup})
         (e/listen js/window et/RESIZE reposition)
         (go-loop []
-          (let [[e c] (alts! [show resize])]
-            (when (or (= c show) (.isVisible popup))
-              (show-popup popup anchor e))
+          (when-let [_ (<! resize-ch)]
+            (when (.isVisible popup)
+              (toggle-popup popup anchor true))
             (recur)))))
+    om/IDidUpdate
+    (did-update [_ _ _]
+      (toggle-popup (om/get-state owner :instance)
+                    (om/get-node owner "anchor") open?))
     om/IWillUnmount
     (will-unmount [_]
       (e/unlisten js/window et/RESIZE (om/get-state owner :reposition)))

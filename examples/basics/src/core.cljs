@@ -31,7 +31,7 @@
             resp (<! (jsonp (str base-url query)))]
         (apply mapv vector (rest resp)))))
 
-(defn App [{:keys [choice1 choice2 hl1 hl2] :as props} owner]
+(defn App [{:keys [choice1 choice2 hl1 hl2 datasource] :as props} owner]
   (reify
     om/IDisplayName (display-name [_] "App")
     om/IRender
@@ -43,29 +43,34 @@
         [:div {:style {:width 800
                        :display "inline-block"}}
          (om/build AutoComplete {:completions  wikipedia-search
-                                 :array?       true
                                  :flex         [1 3 2]
                                  :throttle     750
                                  :placeholder  "Select mode, remote data, multiple columns"
                                  :height       250
+                                 :display-fn   first
                                  :on-change    #(om/update! props :choice1 (first %))
-                                 :on-highlight #(om/update! props :hl1 %)})]
+                                 :on-highlight #(om/update! props :hl1 (first %))})]
         [:span " Choice:" choice1]
         [:span " | Highlight:" hl1]
         [:hr]
         [:div {:style {:width  400
                        :display "inline-block"}}
-         (om/build AutoComplete {:cursor      (:datasource props)
-                                 :default     (-> props :datasource (get 10))
+         (om/build AutoComplete {:datasource  datasource
+                                 :default     (datasource 10)
+                                 :value       (:value props)
+                                 :get-cols     vector
                                  :placeholder "Select mode with default value"})]
+        [:button.btn {:on-click #(om/update! props :value (rand-nth datasource))}
+         "Set random value"]
         [:div {:style {:height 300}}]
         [:p "On the bottom of viewport, popup should pop... up ;-)"]
         [:div {:style {:width  400
                        :display "inline-block"}}
-         (om/build AutoComplete {:cursor       (:datasource props)
+         (om/build AutoComplete {:datasource   datasource
                                  :editable?    true
                                  :placeholder  "Edit mode, local data, one column"
-                                 :on-change    #(om/update! props :choice2 (first %))
+                                 :get-cols     vector
+                                 :on-change    #(om/update! props :choice2 %)
                                  :on-highlight #(om/update! props :hl2 %)})]
         [:span " Choice:" choice2]
         [:span " | Highlight:" hl2]]))))

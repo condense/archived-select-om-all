@@ -16,16 +16,35 @@
 
 (enable-console-print!)
 
-(defn make-autocomplete-state [completions throttle default]
-  (let [selecting? (atom false)
+(defn make-completions
+  "Make completions functions which takes query and returns channel which will
+  receive suggested items. User can provide custom `completions` by himself,
+  or `search-fn` which filter given dataset based on query, or rely on default
+  search function. Also, `index-fn` is function to prepare data for search
+  (e.g. `first` to search first column in case of array data)
+  Dataset is to be supplied with `:datasource` option of component."
+  [{:keys [completions search-fn index-fn]
+    :or   {search-fn default-local-search index-fn identity}} owner]
+  (or completions
+      (fn [query]
+        (go
+          (search-fn (map index-fn (om/get-props owner :datasource)) query)))))
+
+(defn make-autocomplete-state [{:keys [throttle default value]
+                                :or   {throttle 100} :as props} owner]
+  (let [completions (make-completions props owner)
+        selecting? (atom false)
         hold? (atom false)
         input (chan)
         query-ctrl (chan)
         blur (chan 1 (remove (fn [_] @hold?)))
         ;; index of item where mouse down/up
+        ;; to select by mouse only if it clicks in item bounds
         mousedown (chan (sliding-buffer 1))
         mouseup (chan (sliding-buffer 1))
-        list-ctrl (chan)
+        mouseselect (chan 1 (comp (filter (fn [[d u]] (= d u)))
+                                  (map (constantly :select))))
+        ;; index of item to highlight
         hover (chan)
         keycodes (chan 1 (comp (filter
                                 (fn [kc]
@@ -33,100 +52,87 @@
                                        (or (not= kc TAB) @selecting?))))
                                (map key->keyword)))
         keycodes* (a/mult keycodes)
-        mouseselect (chan 1 (comp (filter (fn [[d u]] (= d u)))
-                                  (map (constantly :select))))
-        choice (chan)
-        cancel* (a/mult (a/merge [blur (a/tap keycodes* (chan 1 (filter #{:exit})))]))
-        state {:focus          (chan)
-               :refocus        (chan)
-               :blur           blur
-               :input          input
-               :keycodes       keycodes
-               :mousedown      mousedown
-               :mouseup        mouseup
-               :hover          hover
-               :query-ctrl     query-ctrl
-               :query          (r/throttle* input throttle (chan) query-ctrl)
-               :select         (a/merge [(a/tap keycodes* (chan)) hover mouseselect])
-               :cancel         (a/tap cancel* (chan))
-               :list-ctrl      list-ctrl
-               :list-ctrl*     (a/mult list-ctrl)
-               :completions    completions
-               :selecting?     selecting?
-               :hold?          hold?
-               :choice         choice
-               :choice*        (a/mult choice)
-               :cancel*        cancel*
-               :current-choice (atom (or default ""))}
+        ;; cancel on blur and :exit key (typically ESC)
+        cancel (a/merge [blur (a/tap keycodes* (chan 1 (filter #{:exit})))])
+        state {:focus       (chan)
+               :refocus     (chan)
+               :blur        blur
+               :input       input
+               :keycodes    keycodes
+               :mousedown   mousedown
+               :mouseup     mouseup
+               :hover       hover
+               :query-ctrl  query-ctrl
+               :query       (r/throttle* input throttle (chan) query-ctrl)
+               :select      (a/merge [(a/tap keycodes* (chan)) hover mouseselect])
+               :cancel      cancel
+               :list-ctrl   (chan)
+               :completions completions
+               :selecting?  selecting?
+               :hold?       hold?
+               :resize!     (chan)
+               :value       (or default value :select-om-all.logic/none)}
         autocompleter (autocompleter state)]
     (a/pipe (a/map vector [mousedown mouseup]) mouseselect)
     (assoc state :autocompleter autocompleter)))
 
-(defn make-completions [owner completions search-fn array?]
-  (or completions
-      (fn [query]
-        (go ((or search-fn
-                 default-local-search)
-             (map (if array? identity vector)
-                  (om/get-props owner :cursor))
-             query)))))
-
-(defn AutoComplete [{:keys [search-fn completions throttle array? editable?
-                            input-component list-component default display-fn]
-                     :or   {throttle 100
-                            input-component Input
-                            list-component FDTList}
-                     :as props} owner]
+(defn AutoComplete [{:keys [input-component list-component
+                            editable? default
+                            on-highlight on-change]
+                     :or   {input-component Input
+                            list-component  FDTList
+                            on-highlight    identity
+                            on-change       identity}
+                     :as   props} owner]
   (reify
     om/IDisplayName (display-name [_] "AutoComplete")
     om/IInitState
     (init-state [_]
-      (let [completions (make-completions owner completions search-fn array?)
-            {:keys [autocompleter current-choice list-ctrl*] :as state}
-            (make-autocomplete-state completions throttle default)]
-        (when-not editable?
-          (a/pipe (a/tap (:cancel* state)
-                         (chan 1 (comp
-                                  (filter #{:blur})
-                                  (map #(deref current-choice)))))
-                  (:choice state)))
+      (let [{:keys [autocompleter list-ctrl] :as state}
+            (make-autocomplete-state props owner)]
+        (go-loop []
+          (when-let [e (<! list-ctrl)]
+            (match e
+              [:show x] (om/update-state! owner
+                                          #(merge % {:highlighted nil
+                                                     :open?       x}))
+              [:set-items v] (om/set-state! owner :items v)
+              [:highlight n] (om/set-state! owner :highlighted n)
+              [:unhighlight n] (om/set-state! owner :highlighted nil)
+              [:loading x] (om/set-state! owner :loading? x)
+              :else nil)
+            (recur)))
         (go-loop []
           (when-let [choice (<! autocompleter)]
-            (when-let [on-change (om/get-props owner :on-change)]
-              (on-change (if array? choice (first choice))))
-            (>! (:choice state)
-                (reset! current-choice
-                        (cond
-                          (= :select-om-all.logic/none choice) ""
-                          display-fn (display-fn choice)
-                          array? (second choice)
-                          :else (first choice))))
+            (om/set-state! owner :value choice)
             (recur)))
-        (assoc state
-               :pop (a/tap list-ctrl*
-                           (chan 1 (comp (filter (comp #{:show} first))
-                                         (map second))))
-               :resize (chan))))
+        state))
     om/IDidMount
     (did-mount [_]
-      (when-not (or editable? default)
+      (when-not (or editable? default (:value props))
         (go
-          (let [ctrl (om/get-state owner :list-ctrl)
-                _ (>! ctrl [:initial-loading true])
-                [[choice]] (<! ((om/get-state owner :completions) ""))
-                _ (>! ctrl [:initial-loading false])]
+          (let [_ (om/set-state! owner :initial-loading? true)
+                [choice] (<! ((om/get-state owner :completions) ""))
+                _ (om/set-state! owner :initial-loading? false)]
             (when choice
-              (when-let [on-change (om/get-props owner :on-change)]
-                (on-change (if array? choice (first choice))))
-              (>! (om/get-state owner :choice)
-                  (reset! (om/get-state owner :current-choice) choice)))))))
-    om/IRender
-    (render [_]
-      (let [state (om/get-state owner)]
-        (html [:div
-               (om/build Popup
-                         {:anchor (om/build input-component props {:state state})
-                          :popup  (om/build list-component props {:state state})
-                          :show   (:pop state)
-                          :resize (:resize state)
-                          :parent owner})])))))
+              (om/set-state! owner :value choice))))))
+    om/IDidUpdate
+    (did-update [_ prev-props prev-state]
+      (let [{:keys [value highlighted items]} (om/get-state owner)]
+        (when (not= (:value prev-state) value)
+          (on-change (if (= :select-om-all.logic/none value) nil value)))
+        (when (not= (:highlighted prev-state) highlighted)
+          (on-highlight (get items highlighted)))
+        (when (not= (:value prev-props) (:value props))
+          (om/set-state! owner :value (:value props)))))
+    om/IRenderState
+    (render-state [_ state]
+      (html
+       [:div
+        (om/build
+         Popup
+         {:anchor       (om/build input-component props {:state state})
+          :popup        (om/build list-component props {:state state})
+          :open?        (:open? state)
+          :resize-ch    (:resize! state)
+          :set-width-fn #(om/set-state! owner :width %)})]))))

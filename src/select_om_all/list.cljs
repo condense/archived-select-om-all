@@ -12,7 +12,6 @@
 ;;; LIST COMPONENT must deal with:
 ;;; PROPS
 ;;; flex — proportions of columns, e.g. [1 3 2]
-;;; on-highlight
 ;;; STATE
 ;;; parent — owner of input component to adjust width with
 ;;; refocus — put! when interaction like scroll has ended and input should regain focus
@@ -32,7 +31,7 @@
 
 (defn cell-getter [k row] (get row k))
 
-(defn cell-renderer [hover highlighted current-choice mousedown mouseup
+(defn cell-renderer [hover highlighted value mousedown mouseup
                      cell-data cell-data-key row-data row-index]
   (html [:div {:on-mouse-enter #(put! hover row-index)
                :on-mouse-down  #(do
@@ -45,44 +44,27 @@
                                   true)
                :style          {:cursor "pointer"}
                :class          (cond
-                                 (= (first row-data) @current-choice) "bg-primary"
+                                 (= row-data value) "bg-primary"
                                  (= row-index highlighted) "bg-info"
                                  :else nil)}
          ;; when blank put nbsp to prevent cell collapse and bad bg coloring
          (if (blank? cell-data) " " cell-data)]))
 
-(defn FDTList [{:keys [flex on-highlight get-cols]
-                :or {on-highlight identity
+(defn FDTList [{:keys [flex get-cols height]
+                :or {height  200
                      get-cols identity}} owner]
   (reify
     om/IDisplayName (display-name [_] "AutoComplete Table")
-    om/IDidMount
-    (did-mount [_]
-      (let [ch (a/tap (om/get-state owner :list-ctrl*) (chan))]
-        (go-loop []
-          (when-let [e (<! ch)]
-            (match e
-              [:show x] (om/set-state! owner :highlighted nil)
-              [:set-items v] (om/set-state! owner :items v)
-              [:highlight n] (do (om/set-state! owner :highlighted n)
-                                 (on-highlight
-                                  (first (om/get-state owner [:items n]))))
-              [:unhighlight n] (do (om/set-state! owner :highlighted nil)
-                                   (on-highlight nil))
-              [:loading x] (om/set-state! owner :loading? x)
-              :else nil)
-            (recur)))))
     om/IWillUpdate
     (will-update [_ _ _]
-      (a/put! (om/get-state owner :resize) true))
+      (a/put! (om/get-state owner :resize!) true))
     om/IDidUpdate
     (did-update [_ _ _]
-      (a/put! (om/get-state owner :resize) true))
+      (a/put! (om/get-state owner :resize!) true))
     om/IRenderState
     (render-state [_ {:keys [keycodes mousedown mouseup hover highlighted
                              hold? blur refocus items loading? selecting?
-                             current-choice width]}]
-      ;(a/put! (om/get-state owner :resize) true)
+                             value width]}]
       (html
        (if (or loading? (zero? (count items)))
          [:div {:style {:border           "solid 1px #d3d3d3"
@@ -96,12 +78,12 @@
            :on-blur        #(do (put! blur :blur) true)
            :on-mouse-up    #(do (put! refocus true) true)}
           (apply Table #js {:width       width
-                            :maxHeight   200
+                            :maxHeight   height
                             :rowGetter   #(get-cols (get items %))
                             :rowsCount   (count items)
                             :scrollToRow highlighted
                             :rowHeight   32}
-                 (let [r (partial cell-renderer hover highlighted current-choice
+                 (let [r (partial cell-renderer hover highlighted (get-cols value)
                                   mousedown mouseup)]
                    (map #(Column #js {:dataKey        %
                                       :cellRenderer   r
