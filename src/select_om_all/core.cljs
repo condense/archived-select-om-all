@@ -17,11 +17,11 @@
 (enable-console-print!)
 
 (defn make-completions
-  "Make completions functions which takes query and returns channel which will
-  receive suggested items. User can provide custom `completions` by himself,
-  or `search-fn` which filter given dataset based on query, or rely on default
-  search function. Also, `index-fn` is function to prepare data for search
-  (e.g. `first` to search first column in case of array data)
+  "Make completions function which takes a query and returns the channel that
+  will receive items. User can provide custom either `completions`,
+  or `search-fn` which filters given dataset with query, or rely on default
+  search function. Also, `index-fn` is a function to prepare data for search
+  (e.g. `first` to search only in first column in case of array data)
   Dataset is to be supplied with `:datasource` option of component."
   [{:keys [completions search-fn index-fn]
     :or   {search-fn default-local-search index-fn identity}} owner]
@@ -107,15 +107,6 @@
             (om/set-state! owner :value choice)
             (recur)))
         state))
-    om/IDidMount
-    (did-mount [_]
-      (when-not (or editable? default (:value props))
-        (go
-          (let [_ (om/set-state! owner :initial-loading? true)
-                [choice] (<! ((om/get-state owner :completions) ""))
-                _ (om/set-state! owner :initial-loading? false)]
-            (when choice
-              (om/set-state! owner :value choice))))))
     om/IDidUpdate
     (did-update [_ prev-props prev-state]
       (let [{:keys [value highlighted items]} (om/get-state owner)]

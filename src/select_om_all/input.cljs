@@ -22,7 +22,8 @@
 
 ;;; Default input component implementation
 
-(defn Input [{:keys [placeholder editable? default display-fn edit-fn]
+(defn Input [{:keys [placeholder editable? default display-fn edit-fn
+                     initial-loading?]
               :or   {display-fn identity
                      edit-fn identity}} owner]
   (reify
@@ -35,7 +36,7 @@
           (recur))))
     om/IRenderState
     (render-state [_ {:keys [focus blur input keycodes hold? selecting?
-                             initial-loading? refocus open? value typing
+                             refocus open? value typing
                              autocompleter]}]
       (let [id (str (gensym))]
         (html
