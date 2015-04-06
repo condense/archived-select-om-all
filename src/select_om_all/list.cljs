@@ -12,8 +12,9 @@
 ;;; LIST COMPONENT must deal with:
 ;;; PROPS
 ;;; flex — proportions of columns, e.g. [1 3 2]
+;;; get-cols — function to convert item to vector of columns
+;;; height — height of list
 ;;; STATE
-;;; parent — owner of input component to adjust width with
 ;;; refocus — put! when interaction like scroll has ended and input should regain focus
 ;;; blur — put! :blur when suggestions list should be dismissed
 ;;; keycodes — put! raw user input
@@ -22,7 +23,10 @@
 ;;; mousedown/mouseup — put! index of item where event corresponding happened, used to determine if select item or not
 ;;; hover — put! index of hovered item
 ;;; highlighted — index of item to highlight
-;;; items — suggestions to render, [[suggestion1 column2] [suggestion2 ...] ...]
+;;; items — suggestions to render
+;;; value — selected item
+;;; loading? — true when query is processed
+;;; width — width of list
 
 ;;; Default list component implementation, based on FixedDataTable
 

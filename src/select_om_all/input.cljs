@@ -10,6 +10,11 @@
 ;;; INPUT COMPONENT must deal with:
 ;;; PROPS
 ;;; placeholder — placeholder text
+;;; editable? — allow input to contain non-selected items
+;;; default — initial item
+;;; display-fn — function to convert item (incl. default) to its representation
+;;; undisplay-fn — when `editable?` convert user input to item
+;;; initial-loading? — lock input while waiting for remote data outside of component
 ;;; STATE
 ;;; text — input value
 ;;; refocus — control channel, when to focus back on itself (if necessary for succesful input)
@@ -19,13 +24,16 @@
 ;;; keycodes — put! raw user input
 ;;; selecting? — atom of selecting state, to specially handle keys if necessary
 ;;; hold? — atom, set to true when blur of all other AutoComplete components must be ignored
+;;; open? — is completions list open?
+;;; value — current item
+;;; autocompleter — channel with completion result, put! (undisplay-fn text) here in Edit mode blur
 
 ;;; Default input component implementation
 
-(defn Input [{:keys [placeholder editable? default display-fn edit-fn
+(defn Input [{:keys [placeholder editable? default display-fn undisplay-fn
                      initial-loading?]
               :or   {display-fn identity
-                     edit-fn identity}} owner]
+                     undisplay-fn identity}} owner]
   (reify
     om/IDisplayName (display-name [_] "AutoComplete Input")
     om/IDidMount
@@ -71,7 +79,7 @@
                                 true))
             :on-blur        #(do
                                (when editable?
-                                 (put! autocompleter (edit-fn (.. % -target -value))))
+                                 (put! autocompleter (undisplay-fn (.. % -target -value))))
                                (put! blur :blur) true)
             :on-input       #(let [v (.. % -target -value)]
                                (put! input v)

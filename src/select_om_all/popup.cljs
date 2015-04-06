@@ -19,9 +19,17 @@
       (.setVisible popup true))
     (.setVisible popup false)))
 
-(defn Popup [{:keys [open? resize-ch set-width-fn]
-              :or {set-width-fn identity}
-              :as props} owner]
+(defn Popup
+  "Props:
+  `anchor`       — main component
+  `popup`        — popup component to be anchored to main one
+  `open?`        — is popup open or closed?
+  `resize-ch`    — channel to signal that popup content has been resized
+  `set-width-fn` — is called with `anchor` element width on mount,
+                   use it to shape `popup` element"
+  [{:keys [open? resize-ch set-width-fn]
+    :or {set-width-fn identity}
+    :as props} owner]
   (reify
     om/IDisplayName (display-name [_] "Popup")
     om/IDidMount
