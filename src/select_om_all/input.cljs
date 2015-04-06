@@ -30,6 +30,9 @@
 
 ;;; Default input component implementation
 
+(defn display [display-fn value]
+  (if (= value :select-om-all.logic/none) "" (display-fn value)))
+
 (defn Input [{:keys [placeholder editable? default display-fn undisplay-fn
                      initial-loading?]
               :or   {display-fn identity
@@ -42,11 +45,15 @@
         (when-let [_ (<! (om/get-state owner :refocus))]
           (.focus (om/get-node owner "input"))
           (recur))))
+    om/IWillUpdate
+    (will-update [_ _ state]
+      (when (not= (:open? state) (om/get-state owner :open?))
+        (om/set-state! owner :typing nil)))
     om/IRenderState
     (render-state [_ {:keys [focus blur input keycodes hold? selecting?
-                             refocus open? value typing
-                             autocompleter]}]
-      (let [id (str (gensym))]
+                             refocus open? value autocompleter typing]}]
+      (let [id (str (gensym))
+            display-fn (partial display display-fn)]
         (html
          [:div.has-feedback
           [:label.control-label.sr-only {:for id}]
@@ -58,9 +65,9 @@
             :placeholder    (if initial-loading? "Loading..." placeholder)
             :disabled       initial-loading?
             :default-value  (display-fn default)
-            :value          (let [v (if (= value :select-om-all.logic/none)
-                                      "" (display-fn value))]
-                              (if open? (or typing v) v))
+            :value          (if (and open? typing)
+                              typing
+                              (display-fn value))
             :on-focus       (fn [_]
                               (when-not open?
                                 (put! focus :focus)
@@ -82,8 +89,8 @@
                                  (put! autocompleter (undisplay-fn (.. % -target -value))))
                                (put! blur :blur) true)
             :on-input       #(let [v (.. % -target -value)]
-                               (put! input v)
                                (om/set-state! owner :typing v)
+                               (put! input v)
                                true)
             :on-key-down    (partial handle-key-down keycodes selecting? hold?)
             :on-mouse-enter #(reset! hold? true)
@@ -104,11 +111,8 @@
               (if open?
                 (reset! hold? false)
                 (do
-                  (if editable?
-                    (put! input
-                          (if (= value :select-om-all.logic/none)
-                            "" (display-fn value)))
-                    (let [t (om/get-node owner "input")]
-                      (.setSelectionRange t 0 (.. t -value -length))))
+                  (let [t (om/get-node owner "input")]
+                    (.setSelectionRange t 0 (.. t -value -length)))
+                  (put! input "")
                   (put! refocus true)))
               true)}]])))))

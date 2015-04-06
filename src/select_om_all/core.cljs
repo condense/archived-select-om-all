@@ -77,7 +77,6 @@
     (assoc state :autocompleter autocompleter)))
 
 (defn AutoComplete [{:keys [input-component list-component
-                            editable? default
                             on-highlight on-change]
                      :or   {input-component Input
                             list-component  FDTList
@@ -109,13 +108,14 @@
         state))
     om/IDidUpdate
     (did-update [_ prev-props prev-state]
-      (let [{:keys [value highlighted items]} (om/get-state owner)]
-        (when (not= (:value prev-state) value)
-          (on-change (if (= :select-om-all.logic/none value) nil value)))
-        (when (not= (:highlighted prev-state) highlighted)
-          (on-highlight (get items highlighted)))
-        (when (not= (:value prev-props) (:value props))
-          (om/set-state! owner :value (:value props)))))
+      ;; REVIEW App in the example does not rerender if callbacks are called sync
+      (go (let [{:keys [value highlighted items]} (om/get-state owner)]
+            (when (not= (:value prev-state) value)
+              (on-change (if (= :select-om-all.logic/none value) nil value)))
+            (when (not= (:highlighted prev-state) highlighted)
+              (on-highlight (get items highlighted)))
+            (when (not= (:value prev-props) (:value props))
+              (om/set-state! owner :value (:value props))))))
     om/IRenderState
     (render-state [_ state]
       (html

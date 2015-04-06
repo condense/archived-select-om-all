@@ -38,14 +38,32 @@
     (render [_]
       (html
        [:div.container
-        [:h2.text-center "AutoComplete Demo"]
+        [:h2.text-center "SelectOmAll Demo"]
         [:hr]
+        [:p "Select mode, local datasource, value is string.
+         On load, 10th value from dataset is preselected.
+         Press button to change value programmatically."]
+        [:div {:style {:width  400
+                       :display "inline-block"}}
+         (om/build AutoComplete {:datasource  datasource
+                                 :default     (datasource 10)
+                                 :value       (:value props)
+                                 :get-cols     vector
+                                 :placeholder "Placeholder ;-)"})]
+        [:button.btn
+         {:style {:margin-left 10}
+          :on-click #(om/update! props :value (rand-nth datasource))}
+         "Pick random item"]
+        [:hr]
+        [:p "Select mode, remote datasource, value is vector of 3 elements, but rendered only 2 using get-cols.
+         In input you see only first column because value is transformed by display-fn."]
         [:div {:style {:width 800
                        :display "inline-block"}}
          (om/build AutoComplete {:completions  wikipedia-search
-                                 :flex         [1 3 2]
+                                 :flex         [1 2]
+                                 :get-cols     (fn [v] [(v 0) (v 2)])
                                  :throttle     750
-                                 :placeholder  "Select mode, remote data, multiple columns"
+                                 :placeholder  "Search Wikipedia!"
                                  :height       250
                                  :display-fn   first
                                  :on-change    #(om/update! props :choice1 (first %))
@@ -53,23 +71,17 @@
         [:span " Choice:" choice1]
         [:span " | Highlight:" hl1]
         [:hr]
-        [:div {:style {:width  400
-                       :display "inline-block"}}
-         (om/build AutoComplete {:datasource  datasource
-                                 :default     (datasource 10)
-                                 :value       (:value props)
-                                 :get-cols     vector
-                                 :placeholder "Select mode with default value"})]
-        [:button.btn {:on-click #(om/update! props :value (rand-nth datasource))}
-         "Set random value"]
+
         [:div {:style {:height 300}}]
-        [:p "On the bottom of viewport, popup should pop... up ;-)"]
+        [:p "Edit mode, local datasource, value is string.
+        On the bottom of viewport, popup should pop... up ;-)"]
         [:div {:style {:width  400
                        :display "inline-block"}}
          (om/build AutoComplete {:datasource   datasource
                                  :editable?    true
-                                 :placeholder  "Edit mode, local data, one column"
+                                 :placeholder  "Type arbitrary value here."
                                  :get-cols     vector
+                                 :value        "Clear me!"
                                  :on-change    #(om/update! props :choice2 %)
                                  :on-highlight #(om/update! props :hl2 %)})]
         [:span " Choice:" choice2]
