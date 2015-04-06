@@ -15,9 +15,18 @@
   (when-not (nil? s)
     (.toLowerCase s)))
 
-(defn default-local-search [data query]
+(defn row-match [query row]
+  (let [str-match #(if (string? %) (-> % lower (subs? query)))]
+    (cond
+      (map? row) (some str-match (vals row))
+      (coll? row) (some str-match row)
+      :else (str-match row))))
+
+(defn default-local-search [rows query]
   (let [query (lower query)]
-    (into [] (filter #(-> % first lower (subs? query)) data))))
+    (into [] (filter (partial row-match query) rows))))
+
+
 
 ;;; Special control key codes and their semantics
 
