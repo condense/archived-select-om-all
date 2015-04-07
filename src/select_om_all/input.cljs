@@ -34,7 +34,7 @@
   (if (= value :select-om-all.logic/none) "" (display-fn value)))
 
 (defn Input [{:keys [placeholder editable? default display-fn undisplay-fn
-                     initial-loading?]
+                     initial-loading? disabled?]
               :or   {display-fn identity
                      undisplay-fn identity}} owner]
   (reify
@@ -50,8 +50,8 @@
       (when (not= (:open? state) (om/get-state owner :open?))
         (om/set-state! owner :typing nil)))
     om/IRenderState
-    (render-state [_ {:keys [focus blur input keycodes hold? selecting?
-                             refocus open? value autocompleter typing]}]
+    (render-state [_ {:keys [focus refocus blur input keycodes autocompleter
+                             open? hold? selecting? value typing]}]
       (let [id (str (gensym))
             display-fn (partial display display-fn)]
         (html
@@ -63,7 +63,7 @@
             :style          {:width "100%"}
             :type           "text"
             :placeholder    (if initial-loading? "Loading..." placeholder)
-            :disabled       initial-loading?
+            :disabled       (or disabled? initial-loading?)
             :default-value  (display-fn default)
             :value          (if (and open? typing)
                               typing
@@ -95,7 +95,9 @@
             :on-key-down    (partial handle-key-down keycodes selecting? hold?)
             :on-mouse-enter #(reset! hold? true)
             :on-mouse-leave #(do (reset! hold? false) true)}]
-          (when-not (or open? (blank? value) (= :select-om-all.logic/none value))
+          (when-not (or open? disabled?
+                        (blank? value)
+                        (= :select-om-all.logic/none value))
             [:span.glyphicon.glyphicon-remove.form-control-feedback
              {:style {:right          34
                       :pointer-events "inherit"

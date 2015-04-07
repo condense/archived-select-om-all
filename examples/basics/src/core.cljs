@@ -71,8 +71,19 @@
         [:span " Choice:" choice1]
         [:span " | Highlight:" hl1]
         [:hr]
+        [:p "Disabled field."]
+        [:div {:style {:width  400
+                       :display "inline-block"}}
+         (om/build AutoComplete {:datasource   datasource
+                                 :editable?    true
+                                 :disabled?    true
+                                 :placeholder  "Disabled."
+                                 :get-cols     vector
+                                 :on-change    #(om/update! props :choice2 %)
+                                 :on-highlight #(om/update! props :hl2 %)})]
 
-        [:div {:style {:height 300}}]
+        [:hr]
+        [:div {:style {:height 200}}]
         [:p "Edit mode, local datasource, value is string.
         On the bottom of viewport, popup should pop... up ;-)"]
         [:div {:style {:width  400
