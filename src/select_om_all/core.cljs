@@ -28,7 +28,8 @@
   (or completions
       (fn [query]
         (go
-          (search-fn (map index-fn (om/get-props owner :datasource)) query)))))
+          (search-fn (map (juxt index-fn identity)
+                          (om/get-props owner :datasource)) query)))))
 
 (defn make-autocomplete-state [{:keys [throttle default value]
                                 :or   {throttle 100} :as props} owner]

@@ -24,7 +24,7 @@
 
 (defn default-local-search [rows query]
   (let [query (lower query)]
-    (into [] (filter (partial row-match query) rows))))
+    (->> rows (filter (comp (partial row-match query) first)) (mapv second))))
 
 
 
