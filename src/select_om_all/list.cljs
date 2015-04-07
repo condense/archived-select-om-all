@@ -87,7 +87,10 @@
                             :rowsCount   (count items)
                             :scrollToRow highlighted
                             :rowHeight   32}
-                 (let [r (partial cell-renderer hover highlighted (get-cols value)
+                 (let [r (partial cell-renderer hover highlighted
+                                  (if (= value :select-om-all.logic/none)
+                                    nil
+                                    (get-cols value))
                                   mousedown mouseup)]
                    (map #(Column #js {:dataKey        %
                                       :cellRenderer   r
