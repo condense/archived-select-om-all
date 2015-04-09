@@ -90,6 +90,29 @@
                                    :get-cols   vector})]]]
 
         [:hr]
+        [:p "Select substitute."]
+
+        (let [value (om/get-state owner :select-value)
+              options {1 "Apple"
+                       2 "Bee"
+                       3 "Cat"
+                       4 "Dog"}
+              select! #(om/set-state! owner :select-value %)]
+             [:div.row
+
+              [:div.col-sm-6
+               [:div.form-group
+                [:select.form-control {:value     value
+                                       :on-change #(select! (.. % -target -value))}
+                 (for [[k v] options]
+                      [:option {:value k} v])]]]
+
+              [:div.col-sm-6
+               (om/build AutoComplete {:value      value
+                                       :datasource options
+                                       :on-change  #(select! %)})]])
+
+        [:hr]
         [:div {:style {:height 200}}]
         [:p "Edit mode, local datasource, value is string.
         On the bottom of viewport, popup should pop... up ;-)"]
