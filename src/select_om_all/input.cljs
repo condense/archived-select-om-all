@@ -136,7 +136,7 @@
                       :cursor         "pointer"}
               :on-mouse-down
               #(do
-                 (put! input "")
+                 (put! refocus true)
                  (put! autocompleter "")
                  true)}])
           [:span.glyphicon.form-control-feedback
