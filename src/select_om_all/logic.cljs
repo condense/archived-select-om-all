@@ -157,7 +157,7 @@
                 (let [items (<! (completions ""))]
                   (>! list-ctrl [:set-items items])
                   (when-let [v (first v)]
-                    (>! list-ctrl [:highlight (index-of items v)])
+                    (go (>! select (index-of items v)))
                     (>! out v))
                   (recur items focused))
                 (do (>! list-ctrl [:set-items v])

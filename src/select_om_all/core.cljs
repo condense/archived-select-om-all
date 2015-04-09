@@ -82,7 +82,7 @@
     (assoc state :autocompleter autocompleter)))
 
 (defn AutoComplete [{:keys [input-component list-component
-                            on-highlight on-change]
+                            on-highlight on-change simple?]
                      :or   {input-component Input
                             list-component  FDTList
                             on-highlight    identity
@@ -111,6 +111,19 @@
             (om/set-state! owner :value choice)
             (recur)))
         state))
+    om/IDidMount
+    (did-mount [_]
+      (when simple?
+        (go
+          (let [_ (om/set-state! owner :initial-loading? true)
+                items (<! ((om/get-state owner :completions) ""))
+                _ (om/set-state! owner :initial-loading? false)]
+            (om/set-state-nr! owner :items items)
+            (when (and (not (om/get-state owner :default))
+                       (or (om/get-state owner :value)
+                           (= (om/get-state owner :value) :select-om-all.logic/none)))
+              (when-let [v (first items)]
+                (om/set-state! owner :value v)))))))
     om/IDidUpdate
     (did-update [_ prev-props prev-state]
       ;; REVIEW App in the example does not rerender if callbacks are called sync

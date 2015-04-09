@@ -33,7 +33,7 @@
 ;;; Default input component implementation
 
 (defn display [display-fn value]
-  (if (= value :select-om-all.logic/none) "" (display-fn value)))
+  (if (= value :select-om-all.logic/none) "" (or (display-fn value) "")))
 
 (defn Input [{:keys [placeholder editable? default display-fn undisplay-fn
                      initial-loading? disabled? simple? simple-timeout]
@@ -121,7 +121,7 @@
                                 true))
             :on-mouse-enter #(reset! hold? true)
             :on-mouse-leave #(do (reset! hold? false) true)}]
-          (when-not (or open? disabled?
+          (when-not (or open? disabled? simple?
                         (blank? value)
                         (= :select-om-all.logic/none value))
             [:span.glyphicon.glyphicon-remove.form-control-feedback
@@ -140,8 +140,9 @@
               (if open?
                 (reset! hold? false)
                 (do
-                  (let [t (om/get-node owner "input")]
-                    (.setSelectionRange t 0 (.. t -value -length)))
+                  (when-not simple?
+                    (let [t (om/get-node owner "input")]
+                      (.setSelectionRange t 0 (.. t -value -length))))
                   (open!)
                   (put! refocus true)))
               true)}]])))))

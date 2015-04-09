@@ -92,7 +92,7 @@
         [:hr]
         [:p "Select substitute."]
 
-        (let [value (om/get-state owner :select-value)
+        (let [value (int (om/get-state owner :select-value))
               options {1 "Apple"
                        2 "Bee"
                        3 "Cat"
@@ -106,11 +106,13 @@
                                        :on-change #(select! (.. % -target -value))}
                  (for [[k v] options]
                       [:option {:value k} v])]]]
-
               [:div.col-sm-6
-               (om/build AutoComplete {:value      value
-                                       :datasource options
-                                       :on-change  #(select! %)})]])
+               (om/build AutoComplete {:value      (when-let [x (get options value)] [value x])
+                                       :simple?    true
+                                       :datasource (vec options)
+                                       :get-cols   (comp vector second)
+                                       :display-fn second
+                                       :on-change  #(select! (first %))})]])
 
         [:hr]
         [:div {:style {:height 200}}]
