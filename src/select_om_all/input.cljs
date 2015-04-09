@@ -60,7 +60,9 @@
           [:input.form-control
            {:ref            "input"
             :id             id
-            :style          {:width "100%"}
+            :style          {:width "100%"
+                             :padding-right 42
+                             :text-overflow "ellipsis"}
             :type           "text"
             :placeholder    (if initial-loading? "Loading..." placeholder)
             :disabled       (or disabled? initial-loading?)
@@ -114,7 +116,8 @@
                         (blank? value)
                         (= :select-om-all.logic/none value))
             [:span.glyphicon.glyphicon-remove.form-control-feedback
-             {:style {:right          34
+             {:style {:right          17
+                      :color          "#aaa"
                       :pointer-events "inherit"
                       :cursor         "pointer"}
               :on-mouse-down
