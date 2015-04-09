@@ -71,16 +71,23 @@
         [:span " Choice:" choice1]
         [:span " | Highlight:" hl1]
         [:hr]
-        [:p "Disabled field."]
-        [:div {:style {:width  400
-                       :display "inline-block"}}
-         (om/build AutoComplete {:datasource   datasource
-                                 :editable?    true
-                                 :disabled?    true
-                                 :placeholder  "Disabled."
-                                 :get-cols     vector
-                                 :on-change    #(om/update! props :choice2 %)
-                                 :on-highlight #(om/update! props :hl2 %)})]
+        [:div.row
+         [:div.col-sm-6
+          [:p "Disabled field."]
+          [:div {:style {:width   400
+                         :display "inline-block"}}
+           (om/build AutoComplete {:datasource  datasource
+                                   :editable?   true
+                                   :disabled?   true
+                                   :placeholder "Disabled."
+                                   :get-cols    vector})]]
+         [:div.col-sm-6
+          [:p "Without search (mimic traditional select)"]
+          [:div {:style {:width   400
+                         :display "inline-block"}}
+           (om/build AutoComplete {:datasource datasource
+                                   :simple?    true
+                                   :get-cols   vector})]]]
 
         [:hr]
         [:div {:style {:height 200}}]

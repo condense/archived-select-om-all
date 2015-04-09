@@ -35,6 +35,7 @@
 (def DOWN_ARROW 40)
 (def TAB 9)
 (def ESC 27)
+(def BKSP 8)
 
 (def KEYS #{UP_ARROW DOWN_ARROW ENTER TAB ESC})
 
@@ -57,4 +58,9 @@
       (.preventDefault e)))
   (put! keycodes (.-keyCode e))
   true)
+
+(defn relevant-keys [kc]
+  (or (= kc 8)
+      (and (> kc 46)
+           (not (#{91 92 93} kc)))))
 

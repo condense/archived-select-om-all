@@ -5,7 +5,8 @@
             [clojure.string :refer [blank?]]
             [om.core :as om]
             [sablono.core :refer-macros [html]]
-            [select-om-all.utils :refer [handle-key-down ESC]]))
+            [select-om-all.utils :refer [handle-key-down relevant-keys KEYS
+                                         ESC BKSP UP_ARROW DOWN_ARROW]]))
 
 ;;; INPUT COMPONENT must deal with:
 ;;; PROPS
@@ -15,6 +16,7 @@
 ;;; display-fn — function to convert item (incl. default) to its representation
 ;;; undisplay-fn — when `editable?` convert user input to item
 ;;; initial-loading? — lock input while waiting for remote data outside of component
+;;; simple? — mimic traditional select without search input (but probably listening for keys to filter options)
 ;;; STATE
 ;;; text — input value
 ;;; refocus — control channel, when to focus back on itself (if necessary for succesful input)
@@ -34,7 +36,7 @@
   (if (= value :select-om-all.logic/none) "" (display-fn value)))
 
 (defn Input [{:keys [placeholder editable? default display-fn undisplay-fn
-                     initial-loading? disabled?]
+                     initial-loading? disabled? simple?]
               :or   {display-fn identity
                      undisplay-fn identity}} owner]
   (reify
@@ -45,13 +47,11 @@
         (when-let [_ (<! (om/get-state owner :refocus))]
           (.focus (om/get-node owner "input"))
           (recur))))
-    om/IWillUpdate
-    (will-update [_ _ state]
-      (when (not= (:open? state) (om/get-state owner :open?))
-        (om/set-state! owner :typing nil)))
     om/IRenderState
     (render-state [_ {:keys [focus refocus blur input keycodes autocompleter
                              open? hold? selecting? value typing]}]
+      (when-not open?
+        (om/set-state-nr! owner :typing nil))
       (let [id (str (gensym))
             display-fn (partial display display-fn)]
         (html
@@ -64,8 +64,9 @@
             :type           "text"
             :placeholder    (if initial-loading? "Loading..." placeholder)
             :disabled       (or disabled? initial-loading?)
+            :read-only       (when simple? "readonly")
             :default-value  (display-fn default)
-            :value          (if (and open? typing)
+            :value          (if (and open? typing (not simple?))
                               typing
                               (display-fn value))
             :on-focus       (fn [_]
@@ -88,11 +89,25 @@
                                (when editable?
                                  (put! autocompleter (undisplay-fn (.. % -target -value))))
                                (put! blur :blur) true)
-            :on-input       #(let [v (.. % -target -value)]
-                               (om/set-state! owner :typing v)
-                               (put! input v)
+            :on-input       (when-not simple?
+                              #(let [v (.. % -target -value)]
+                                 (om/set-state! owner :typing v)
+                                 (put! input v)
+                                 true))
+            :on-key-down    #(do
+                               (handle-key-down keycodes selecting? hold? %)
+                               (when simple?
+                                 (let [kc (.-keyCode %)]
+                                   (when (#{UP_ARROW DOWN_ARROW} kc)
+                                     (.preventDefault %))
+                                   (when (relevant-keys kc)
+                                     (let [v (or (om/get-state owner :typing) "")
+                                           v (if (= kc BKSP)
+                                               (subs v 0 (dec (count v)))
+                                               (str v (js/String.fromCharCode kc)))]
+                                       (om/set-state! owner :typing v)
+                                       (put! input v)))))
                                true)
-            :on-key-down    (partial handle-key-down keycodes selecting? hold?)
             :on-mouse-enter #(reset! hold? true)
             :on-mouse-leave #(do (reset! hold? false) true)}]
           (when-not (or open? disabled?
