@@ -36,9 +36,10 @@
   (if (= value :select-om-all.logic/none) "" (display-fn value)))
 
 (defn Input [{:keys [placeholder editable? default display-fn undisplay-fn
-                     initial-loading? disabled? simple?]
+                     initial-loading? disabled? simple? simple-timeout]
               :or   {display-fn identity
-                     undisplay-fn identity}} owner]
+                     undisplay-fn identity
+                     simple-timeout 1000}} owner]
   (reify
     om/IDisplayName (display-name [_] "AutoComplete Input")
     om/IDidMount
@@ -53,7 +54,10 @@
       (when-not open?
         (om/set-state-nr! owner :typing nil))
       (let [id (str (gensym))
-            display-fn (partial display display-fn)]
+            display-fn (partial display display-fn)
+            open! #(put! input (if (om/get-props owner :simple?)
+                                 (display-fn (om/get-state owner :value)) ""))
+            close! #(put! keycodes ESC)]
         (html
          [:div.has-feedback
           [:label.control-label.sr-only {:for id}]
@@ -74,7 +78,7 @@
             :on-focus       (fn [_]
                               (when-not open?
                                 (put! focus :focus)
-                                (when-not editable? (put! input "")))
+                                (when-not editable? (open!)))
                               true)
             :on-mouse-up    (fn [e]
                               (when-not editable?
@@ -82,11 +86,7 @@
                                   (.setSelectionRange
                                    t 0 (.. t -value -length)))))
             :on-mouse-down  (when-not editable?
-                              (fn [_]
-                                (if open?
-                                  (put! keycodes ESC)
-                                  (put! input ""))
-                                true))
+                              (fn [_] ((if open? close! open!)) true))
             :on-blur        #(do
                                (when editable?
                                  (put! autocompleter (undisplay-fn (.. % -target -value))))
@@ -96,21 +96,29 @@
                                  (om/set-state! owner :typing v)
                                  (put! input v)
                                  true))
-            :on-key-down    #(let [kc (.-keyCode %)]
-                               (when (and (not open?) (#{UP_ARROW DOWN_ARROW} kc))
-                                 (put! input ""))
-                               (handle-key-down keycodes selecting? hold? %)
-                               (when simple?
-                                 (when (#{UP_ARROW DOWN_ARROW} kc)
-                                   (.preventDefault %))
-                                 (when (relevant-keys kc)
-                                   (let [v (or (om/get-state owner :typing) "")
-                                         v (if (= kc BKSP)
-                                             (subs v 0 (dec (count v)))
-                                             (str v (js/String.fromCharCode kc)))]
-                                     (om/set-state! owner :typing v)
-                                     (put! input v))))
-                               true)
+            :on-key-down    (fn [e]
+                              (let [kc (.-keyCode e)]
+                                (when (and (not open?) (#{UP_ARROW DOWN_ARROW} kc))
+                                  (open!))
+                                (handle-key-down keycodes selecting? hold? e)
+                                (when simple?
+                                  (when-let [id (om/get-state owner :simple-timeout-id)]
+                                    (js/clearTimeout id))
+                                  (when (#{UP_ARROW DOWN_ARROW} kc)
+                                    (.preventDefault e))
+                                  (when (relevant-keys kc)
+                                    (let [v (or (om/get-state owner :typing) "")
+                                          v (if (= kc BKSP)
+                                              (subs v 0 (dec (count v)))
+                                              (str v (js/String.fromCharCode kc)))]
+                                      (om/set-state! owner :typing v)
+                                      (put! input v)))
+                                  (om/set-state-nr!
+                                   owner :simple-timeout-id
+                                   (js/setTimeout
+                                    #(om/set-state-nr! owner :typing nil)
+                                    simple-timeout)))
+                                true))
             :on-mouse-enter #(reset! hold? true)
             :on-mouse-leave #(do (reset! hold? false) true)}]
           (when-not (or open? disabled?
@@ -134,6 +142,6 @@
                 (do
                   (let [t (om/get-node owner "input")]
                     (.setSelectionRange t 0 (.. t -value -length)))
-                  (put! input "")
+                  (open!)
                   (put! refocus true)))
               true)}]])))))

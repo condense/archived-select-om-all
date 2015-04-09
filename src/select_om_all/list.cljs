@@ -33,7 +33,7 @@
 (def Table (js/React.createFactory js/FixedDataTable.Table))
 (def Column (js/React.createFactory js/FixedDataTable.Column))
 
-(defn cell-getter [k row] (get row k))
+(defn cell-getter [k row] (nth row k))
 
 (defn cell-renderer [hover highlighted value mousedown mouseup
                      cell-data cell-data-key row-data row-index]
@@ -83,7 +83,7 @@
            :on-mouse-up    #(do (put! refocus true) true)}
           (apply Table #js {:width       width
                             :maxHeight   height
-                            :rowGetter   #(get-cols (get items %))
+                            :rowGetter   #(get-cols (nth items %))
                             :rowsCount   (count items)
                             :scrollToRow highlighted
                             :rowHeight   32}

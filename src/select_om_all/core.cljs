@@ -3,6 +3,7 @@
   (:require [cljs.core.match :refer-macros [match]]
             [cljs.core.async
              :refer [>! <! alts! chan sliding-buffer put!] :as a]
+            [clojure.string :refer [blank?]]
             [om.core :as om]
             [sablono.core :refer-macros [html]]
             [cljsjs.fixed-data-table]
@@ -28,10 +29,12 @@
   (or completions
       (fn [query]
         (go
-          (search-fn (map (juxt index-fn identity)
-                          (om/get-props owner :datasource)) query)))))
+          (let [data (om/get-props owner :datasource)]
+            (if (blank? query)
+              data
+              (search-fn (map (juxt index-fn identity) data) query)))))))
 
-(defn make-autocomplete-state [{:keys [throttle default value]
+(defn make-autocomplete-state [{:keys [throttle default value simple?]
                                 :or   {throttle 100} :as props} owner]
   (let [completions (make-completions props owner)
         selecting? (atom false)
@@ -72,6 +75,7 @@
                :selecting?  selecting?
                :hold?       hold?
                :resize!     (chan)
+               :simple?     simple?
                :value       (or default value :select-om-all.logic/none)}
         autocompleter (autocompleter state)]
     (a/pipe (a/map vector [mousedown mouseup]) mouseselect)
@@ -114,7 +118,7 @@
             (when (not= (:value prev-state) value)
               (on-change (if (= :select-om-all.logic/none value) nil value)))
             (when (not= (:highlighted prev-state) highlighted)
-              (on-highlight (get items highlighted)))
+              (on-highlight (and highlighted (nth items highlighted))))
             (when (not= (:value prev-props) (:value props))
               (om/set-state! owner :value (:value props))))))
     om/IRenderState

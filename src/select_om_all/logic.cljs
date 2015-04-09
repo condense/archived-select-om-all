@@ -2,7 +2,8 @@
   (:require-macros [cljs.core.async.macros :refer [go go-loop]])
   (:require [cljs.core.match :refer-macros [match]]
             [cljs.core.async :refer [>! <! alts! chan] :as a]
-            [select-om-all.reactive :as r]))
+            [select-om-all.reactive :as r]
+            [select-om-all.utils :refer [index-of]]))
 
 ;;; Inspiration and some code are from
 ;;; David Nolen's “Comparative Literate Programming”,
@@ -79,21 +80,16 @@
   Also notify `list-ctrl` about change by putting
   `[:select idx]` or `[:unselect idx]`.
   `in`        :: Channel of (Highlight | :select)
-  `list-ctrl` :: Channel of ListCommand to control ui list
   `items`     :: Items
   -> Channel of (Highlight | [:select Index] | [:select Item])"
-  [in list-ctrl items]
+  [in items]
   (let [out (chan)]
     (go-loop [highlighted ::none selected ::none]
       (let [e (<! in)]
         (if (= e :select)
           (do
-            (when (number? selected)
-              (>! list-ctrl [:unselect selected]))
             (if (number? highlighted)
-              (do
-                (>! list-ctrl [:select highlighted])
-                (>! out [:select (nth items highlighted)]))
+              (>! out [:select (and highlighted (nth items highlighted))])
               (>! out [:select highlighted]))
             (recur highlighted highlighted))
           (do
@@ -115,8 +111,7 @@
   [select cancel list-ctrl items]
   (let [ctrl (chan)
         sel (chan 1 (comp (filter vector?) (map second)))]
-    (a/pipe (selector (highlighter select list-ctrl items ctrl) list-ctrl items)
-            sel)
+    (a/pipe (selector (highlighter select list-ctrl items ctrl) items) sel)
     (go (let [[v sc] (alts! [cancel sel])]
           (do (>! ctrl :exit)
               (if (or (= sc cancel)
@@ -132,9 +127,10 @@
   `:select`      :: Channel of (Number | Direction | :select)
   `:cancel`      :: Channel of (:blur | Any)
   `:selecting?`  :: Atom of Boolean
+  `:simple?`     :: Boolean
   `:completions` :: String -> Channel of Items
   -> Channel of [:select (Item | ::none)]"
-  [{:keys [focus query select cancel list-ctrl] :as opts}]
+  [{:keys [focus query select cancel list-ctrl simple? completions] :as opts}]
   (let [out (chan)
         [query raw] (a/split r/throttle-msg? query)]
     (go-loop [items nil focused false]
@@ -152,13 +148,20 @@
           (and focused (= sc query))
           (let [_ (when-not items (>! list-ctrl [:loading true]))
                 _ (>! list-ctrl [:show true])
-                [v c] (alts! [cancel ((:completions opts) (second v))])]
+                [v c] (alts! [cancel (completions (second v))])]
             (>! list-ctrl [:loading false])
             (if (= c cancel)
               (do (>! list-ctrl [:show false])
                   (recur nil (not= v :blur)))
-              (do (>! list-ctrl [:set-items v])
-                  (recur v focused))))
+              (if simple?
+                (let [items (<! (completions ""))]
+                  (>! list-ctrl [:set-items items])
+                  (when-let [v (first v)]
+                    (>! list-ctrl [:highlight (index-of items v)])
+                    (>! out v))
+                  (recur items focused))
+                (do (>! list-ctrl [:set-items v])
+                    (recur v focused)))))
 
           (and (pos? (count items)) (= sc select))
           (let [_ (reset! (:selecting? opts) true)

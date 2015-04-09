@@ -24,7 +24,7 @@
 
 (defn default-local-search [rows query]
   (let [query (lower query)]
-    (->> rows (filter (comp (partial row-match query) first)) (mapv second))))
+    (->> rows (filter (comp (partial row-match query) first)) (map second))))
 
 
 
@@ -64,3 +64,11 @@
       (and (> kc 46)
            (not (#{91 92 93} kc)))))
 
+(defn index-of [xs x]
+  (let [len (count xs)]
+    (loop [i 0]
+      (if (< i len)
+        (if (= (nth xs i) x)
+          i
+          (recur (inc i)))
+        nil))))
