@@ -60,13 +60,13 @@
           [:input.form-control
            {:ref            "input"
             :id             id
-            :style          {:width "100%"
+            :style          {:width         "100%"
                              :padding-right 42
                              :text-overflow "ellipsis"}
             :type           "text"
             :placeholder    (if initial-loading? "Loading..." placeholder)
             :disabled       (or disabled? initial-loading?)
-            :read-only       (when simple? "readonly")
+            :read-only      (when simple? "readonly")
             :default-value  (display-fn default)
             :value          (if (and open? typing (not simple?))
                               typing
@@ -96,19 +96,20 @@
                                  (om/set-state! owner :typing v)
                                  (put! input v)
                                  true))
-            :on-key-down    #(do
+            :on-key-down    #(let [kc (.-keyCode %)]
+                               (when (and (not open?) (#{UP_ARROW DOWN_ARROW} kc))
+                                 (put! input ""))
                                (handle-key-down keycodes selecting? hold? %)
                                (when simple?
-                                 (let [kc (.-keyCode %)]
-                                   (when (#{UP_ARROW DOWN_ARROW} kc)
-                                     (.preventDefault %))
-                                   (when (relevant-keys kc)
-                                     (let [v (or (om/get-state owner :typing) "")
-                                           v (if (= kc BKSP)
-                                               (subs v 0 (dec (count v)))
-                                               (str v (js/String.fromCharCode kc)))]
-                                       (om/set-state! owner :typing v)
-                                       (put! input v)))))
+                                 (when (#{UP_ARROW DOWN_ARROW} kc)
+                                   (.preventDefault %))
+                                 (when (relevant-keys kc)
+                                   (let [v (or (om/get-state owner :typing) "")
+                                         v (if (= kc BKSP)
+                                             (subs v 0 (dec (count v)))
+                                             (str v (js/String.fromCharCode kc)))]
+                                     (om/set-state! owner :typing v)
+                                     (put! input v))))
                                true)
             :on-mouse-enter #(reset! hold? true)
             :on-mouse-leave #(do (reset! hold? false) true)}]
