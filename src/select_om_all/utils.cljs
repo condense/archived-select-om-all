@@ -9,22 +9,30 @@
   (when-not (nil? s)
     (not= (.indexOf s subs) -1)))
 
+(defn start-with? [s subs]
+  (when-not (nil? s)
+    (zero? (.indexOf s subs))))
+
 (defn lower
   "Converts string to all lower-case."
   [s]
   (when-not (nil? s)
     (.toLowerCase s)))
 
-(defn row-match [query row]
-  (let [str-match #(if (string? %) (-> % lower (subs? query)))]
+(defn str-matcher [simple?]
+  (if simple? start-with? subs?))
+
+(defn row-match [simple? query row]
+  (let [str-match (str-matcher simple?)
+        str-match #(if (string? %) (-> % lower (str-match query)))]
     (cond
       (map? row) (some str-match (vals row))
       (coll? row) (some str-match row)
       :else (str-match row))))
 
-(defn default-local-search [rows query]
+(defn default-local-search [simple? rows query]
   (let [query (lower query)]
-    (->> rows (filter (comp (partial row-match query) first)) (map second))))
+    (->> rows (filter (comp (partial row-match simple? query) first)) (map second))))
 
 
 

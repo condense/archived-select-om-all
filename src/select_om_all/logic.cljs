@@ -133,17 +133,17 @@
   [{:keys [focus query select cancel list-ctrl simple? completions] :as opts}]
   (let [out (chan)
         [query raw] (a/split r/throttle-msg? query)]
-    (go-loop [items nil focused false]
+    (go-loop [items nil focused false hl nil]
       (let [[v sc] (alts! [raw cancel focus query select])]
         (cond
 
           (= sc focus)
-          (recur items true)
+          (recur items true hl)
 
           (= sc cancel)
           (do (>! list-ctrl [:show false])
               (>! (:query-ctrl opts) (now))
-              (recur items (not= v :blur)))
+              (recur items (not= v :blur) hl))
 
           (and focused (= sc query))
           (let [_ (when-not items (>! list-ctrl [:loading true]))
@@ -152,31 +152,31 @@
             (>! list-ctrl [:loading false])
             (if (= c cancel)
               (do (>! list-ctrl [:show false])
-                  (recur nil (not= v :blur)))
+                  (recur nil (not= v :blur) hl))
               (if simple?
                 (let [items (<! (completions ""))]
                   (>! list-ctrl [:set-items items])
-                  (when-let [v (first v)]
-                    (go (>! select (index-of items v)))
-                    (>! out v))
-                  (recur items focused))
+                  (let [v (first v)
+                        v (and v (index-of items v))]
+                    (when v (>! list-ctrl [:highlight v]))
+                    (recur items focused v)))
                 (do (>! list-ctrl [:set-items v])
-                    (recur v focused)))))
+                    (recur v focused hl)))))
 
           (and (pos? (count items)) (= sc select))
           (let [_ (reset! (:selecting? opts) true)
                 _ (>! (:query-ctrl opts) (now))
-                choice (<! (menu-proc (r/concat [v] select)
+                choice (<! (menu-proc (r/concat [(or hl ::pass) v] select)
                                       (a/merge [raw cancel])
                                       list-ctrl items))]
             (reset! (:selecting? opts) false)
             (>! list-ctrl [:show false])
             (if (= choice ::cancel)
-              (recur nil (not= v :blur))
+              (recur nil (not= v :blur) hl)
               (do (>! out choice)
-                  (recur nil focused))))
+                  (recur nil focused hl))))
 
           :else
-          (recur items focused))))
+          (recur items focused hl))))
     out))
 

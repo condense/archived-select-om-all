@@ -24,15 +24,16 @@
   search function. Also, `index-fn` is a function to prepare data for search
   (e.g. `first` to search only in first column in case of array data)
   Dataset is to be supplied with `:datasource` option of component."
-  [{:keys [completions search-fn index-fn]
-    :or   {search-fn default-local-search index-fn identity}} owner]
-  (or completions
-      (fn [query]
-        (go
-          (let [data (om/get-props owner :datasource)]
-            (if (blank? query)
-              data
-              (search-fn (map (juxt index-fn identity) data) query)))))))
+  [{:keys [completions search-fn index-fn simple?]
+    :or   {index-fn identity}} owner]
+  (let [search-fn (or search-fn (partial default-local-search simple?))]
+    (or completions
+        (fn [query]
+          (go
+            (let [data (om/get-props owner :datasource)]
+              (if (blank? query)
+                data
+                (search-fn (map (juxt index-fn identity) data) query))))))))
 
 (defn make-autocomplete-state [{:keys [throttle default value simple?]
                                 :or   {throttle 100} :as props} owner]
@@ -76,7 +77,7 @@
                :hold?       hold?
                :resize!     (chan)
                :simple?     simple?
-               :value       (or default value :select-om-all.logic/none)}
+               :value       (or default value)}
         autocompleter (autocompleter state)]
     (a/pipe (a/map vector [mousedown mouseup]) mouseselect)
     (assoc state :autocompleter autocompleter)))
@@ -108,7 +109,8 @@
             (recur)))
         (go-loop []
           (when-let [choice (<! autocompleter)]
-            (om/set-state! owner :value choice)
+            (when (not= choice :select-om-all.logic/none)
+              (om/set-state! owner :value choice))
             (recur)))
         state))
     om/IDidMount
@@ -119,21 +121,20 @@
                 items (<! ((om/get-state owner :completions) ""))
                 _ (om/set-state! owner :initial-loading? false)]
             (om/set-state-nr! owner :items items)
-            (when (and (not (om/get-state owner :default))
-                       (or (om/get-state owner :value)
-                           (= (om/get-state owner :value) :select-om-all.logic/none)))
+            (when-not (or (om/get-state owner :default)
+                          (om/get-state owner :value))
               (when-let [v (first items)]
                 (om/set-state! owner :value v)))))))
     om/IDidUpdate
     (did-update [_ prev-props prev-state]
       ;; REVIEW App in the example does not rerender if callbacks are called sync
-      (go (let [{:keys [value highlighted items]} (om/get-state owner)]
-            (when (not= (:value prev-state) value)
-              (on-change (if (= :select-om-all.logic/none value) nil value)))
-            (when (not= (:highlighted prev-state) highlighted)
-              (on-highlight (and highlighted (nth items highlighted))))
-            (when (not= (:value prev-props) (:value props))
-              (om/set-state! owner :value (:value props))))))
+      (let [{:keys [value highlighted items]} (om/get-state owner)]
+        (when (not= (:value prev-state) value)
+          (go (on-change value)))
+        (when (not= (:highlighted prev-state) highlighted)
+          (go (on-highlight (and highlighted (nth items highlighted)))))
+        (when (not= (:value prev-props) (:value props))
+          (om/set-state! owner :value (:value props)))))
     om/IRenderState
     (render-state [_ state]
       (html

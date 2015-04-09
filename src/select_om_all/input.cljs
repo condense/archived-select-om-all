@@ -33,7 +33,7 @@
 ;;; Default input component implementation
 
 (defn display [display-fn value]
-  (if (= value :select-om-all.logic/none) "" (or (display-fn value) "")))
+  (or (display-fn value) ""))
 
 (defn Input [{:keys [placeholder editable? default display-fn undisplay-fn
                      initial-loading? disabled? simple? simple-timeout]
@@ -48,11 +48,17 @@
         (when-let [_ (<! (om/get-state owner :refocus))]
           (.focus (om/get-node owner "input"))
           (recur))))
+    om/IDidUpdate
+    (did-update [_ _ prev-state]
+      (when (and editable? (om/get-state owner :typing)
+                 (= (:value prev-state) (om/get-state owner :value)))
+        (put! (om/get-state owner :autocompleter)
+              (undisplay-fn (om/get-state owner :typing))))
+      (when (and (:open? prev-state) (not (om/get-state owner :open?)))
+        (om/set-state-nr! owner :typing nil)))
     om/IRenderState
     (render-state [_ {:keys [focus refocus blur input keycodes autocompleter
                              open? hold? selecting? value typing]}]
-      (when-not open?
-        (om/set-state-nr! owner :typing nil))
       (let [id (str (gensym))
             display-fn (partial display display-fn)
             open! #(put! input (if (om/get-props owner :simple?)
@@ -87,10 +93,7 @@
                                    t 0 (.. t -value -length)))))
             :on-mouse-down  (when-not editable?
                               (fn [_] ((if open? close! open!)) true))
-            :on-blur        #(do
-                               (when editable?
-                                 (put! autocompleter (undisplay-fn (.. % -target -value))))
-                               (put! blur :blur) true)
+            :on-blur        #(do (put! blur :blur) true)
             :on-input       (when-not simple?
                               #(let [v (.. % -target -value)]
                                  (om/set-state! owner :typing v)
@@ -100,41 +103,47 @@
                               (let [kc (.-keyCode e)]
                                 (when (and (not open?) (#{UP_ARROW DOWN_ARROW} kc))
                                   (open!))
-                                (handle-key-down keycodes selecting? hold? e)
-                                (when simple?
-                                  (when-let [id (om/get-state owner :simple-timeout-id)]
-                                    (js/clearTimeout id))
-                                  (when (#{UP_ARROW DOWN_ARROW} kc)
-                                    (.preventDefault e))
-                                  (when (relevant-keys kc)
-                                    (let [v (or (om/get-state owner :typing) "")
-                                          v (if (= kc BKSP)
-                                              (subs v 0 (dec (count v)))
-                                              (str v (js/String.fromCharCode kc)))]
-                                      (om/set-state! owner :typing v)
-                                      (put! input v)))
-                                  (om/set-state-nr!
-                                   owner :simple-timeout-id
-                                   (js/setTimeout
-                                    #(om/set-state-nr! owner :typing nil)
-                                    simple-timeout)))
+                                (if simple?
+                                  (do
+                                    (when (#{UP_ARROW DOWN_ARROW} kc)
+                                      (.preventDefault e))
+                                    (if (relevant-keys kc)
+                                      (let [v (or (om/get-state owner :typing) "")
+                                            v (if (= kc BKSP)
+                                                (subs v 0 (dec (count v)))
+                                                (str v (js/String.fromCharCode kc)))]
+                                        (when-let [id (om/get-state owner :simple-timeout-id)]
+                                          (js/clearTimeout id))
+                                        (om/set-state! owner :typing v)
+                                        (put! input v)
+                                        (om/set-state-nr!
+                                         owner :simple-timeout-id
+                                         (js/setTimeout
+                                          #(om/set-state-nr! owner :typing nil)
+                                          simple-timeout)))
+                                      (handle-key-down keycodes selecting? hold? e)))
+                                  (handle-key-down keycodes selecting? hold? e))
                                 true))
             :on-mouse-enter #(reset! hold? true)
             :on-mouse-leave #(do (reset! hold? false) true)}]
-          (when-not (or open? disabled? simple?
-                        (blank? value)
-                        (= :select-om-all.logic/none value))
+          (when-not (or open? disabled? simple? (blank? value))
             [:span.glyphicon.glyphicon-remove.form-control-feedback
              {:style {:right          17
+                      :width          23
+                      :margin-right   5
                       :color          "#aaa"
                       :pointer-events "inherit"
                       :cursor         "pointer"}
               :on-mouse-down
-              #(put! autocompleter :select-om-all.logic/none)}])
+              #(do
+                 (put! input "")
+                 (put! autocompleter "")
+                 true)}])
           [:span.glyphicon.form-control-feedback
            {:class (str "glyphicon-chevron-" (if open? "up" "down"))
             :style {:pointer-events "inherit"
-                    :cursor         "pointer"}
+                    :cursor         "pointer"
+                    :width          23}
             :on-mouse-down
             (fn []
               (if open?
