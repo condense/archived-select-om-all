@@ -137,7 +137,7 @@
               :on-mouse-down
               #(do
                  (put! refocus true)
-                 (put! autocompleter "")
+                 (put! autocompleter (undisplay-fn ""))
                  true)}])
           [:span.glyphicon.form-control-feedback
            {:class (str "glyphicon-chevron-" (if open? "up" "down"))
