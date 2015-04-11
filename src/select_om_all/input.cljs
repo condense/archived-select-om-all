@@ -126,7 +126,7 @@
                                 true))
             :on-mouse-enter #(reset! hold? true)
             :on-mouse-leave #(do (reset! hold? false) true)}]
-          (when-not (or open? disabled? simple? (blank? value))
+          (when-not (or open? disabled? simple? (blank? (display-fn value)))
             [:span.glyphicon.glyphicon-remove.form-control-feedback
              {:style {:right          17
                       :width          23
