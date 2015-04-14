@@ -54,8 +54,9 @@
          ;; when blank put nbsp to prevent cell collapse and bad bg coloring
          (if (blank? cell-data) " " cell-data)]))
 
-(defn FDTList [{:keys [flex get-cols height]
+(defn FDTList [{:keys [flex get-cols height rowHeight]
                 :or {height  200
+                     rowHeight 32
                      get-cols identity}} owner]
   (reify
     om/IDisplayName (display-name [_] "AutoComplete Table")
@@ -86,7 +87,7 @@
                             :rowGetter   #(get-cols (nth items %))
                             :rowsCount   (count items)
                             :scrollToRow highlighted
-                            :rowHeight   32}
+                            :rowHeight   rowHeight}
                  (let [r (partial cell-renderer hover highlighted
                                   (and value (get-cols value))
                                   mousedown mouseup)]
