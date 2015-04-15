@@ -130,7 +130,11 @@
       ;; REVIEW App in the example does not rerender if callbacks are called sync
       (let [{:keys [value highlighted items]} (om/get-state owner)]
         (when (not= (:value prev-state) value)
-          (go (on-change value)))
+          (go
+            (let [r (on-change value)]
+              (match r
+                [::set x] (om/set-state! owner :value x)
+                :else nil))))
         (when (not= (:highlighted prev-state) highlighted)
           (go (on-highlight (and highlighted (nth items highlighted)))))
         (when (not= (:value prev-props) (:value props))
