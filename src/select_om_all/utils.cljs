@@ -17,7 +17,7 @@
   "Converts string to all lower-case."
   [s]
   (when-not (nil? s)
-    (.toLowerCase s)))
+    (clojure.string/lower-case s)))
 
 (defn str-matcher [simple?]
   (if simple? start-with? subs?))
