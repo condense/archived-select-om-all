@@ -6,10 +6,7 @@
             [goog.Uri]
             [om.core :as om]
             [sablono.core :refer-macros [html]]
-            [select-om-all.core :refer [AutoComplete]]
-            [figwheel.client :as fw]
-            [om-i.core]
-            [om-i.hacks]))
+            [select-om-all.core :refer [AutoComplete]]))
 
 (enable-console-print!)
 
@@ -138,15 +135,4 @@
 (def app-state
   (atom {:datasource (vec (repeatedly 1000 #(rand-str 20)))}))
 
-(om/root App app-state {:target (js/document.getElementById "app")
-                        :instrument (fn [f cursor m]
-                                        (om/build* f cursor
-                                                   (assoc m
-                                                          :descriptor om-i.core/instrumentation-methods)))})
-(defonce ___
-         (do
-           (om-i.hacks/insert-styles)
-           (om-i.core/setup-component-stats!)))
-;;; aux
-
-(fw/start {:websocket-url "ws://localhost:3449/figwheel-ws"})
+(om/root App app-state {:target (js/document.getElementById "app") })
