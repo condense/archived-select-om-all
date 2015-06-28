@@ -150,6 +150,7 @@
                 _ (>! list-ctrl [:show true])
                 [v c] (alts! [cancel (completions (second v))])]
             (>! list-ctrl [:loading false])
+            (>! list-ctrl [:highlight 0])
             (if (= c cancel)
               (do (>! list-ctrl [:show false])
                   (recur nil (not= v :blur) hl))
