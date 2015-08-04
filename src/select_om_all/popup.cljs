@@ -27,17 +27,17 @@
   `resize-ch`    — channel to signal that popup content has been resized
   `set-width-fn` — is called with `anchor` element width on mount,
                    use it to shape `popup` element"
-  [{:keys [open? resize-ch set-width-fn]
-    :or {set-width-fn identity}
-    :as props} owner]
+  [{:keys [open? resize-ch set-width-fn] :as props} owner]
   (reify
     om/IDisplayName (display-name [_] "Popup")
     om/IDidMount
     (did-mount [_]
       (let [anchor (om/get-node owner "anchor")
             popup (goog.ui.Popup. (om/get-node owner "popup"))
-            reposition #(when (.isVisible popup) (.reposition popup))]
-        (-> anchor s/getSize .-width set-width-fn)
+            reposition #(do
+                         (when set-width-fn (-> anchor s/getSize .-width set-width-fn))
+                         (when (.isVisible popup) (.reposition popup)))]
+        (when set-width-fn (-> anchor s/getSize .-width set-width-fn))
         (doto popup
           (.setVisible false)
           (.setAutoHide false)

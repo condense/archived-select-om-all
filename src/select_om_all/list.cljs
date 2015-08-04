@@ -54,7 +54,7 @@
          ;; when blank put nbsp to prevent cell collapse and bad bg coloring
          (if (blank? cell-data) " " cell-data)]))
 
-(defn FDTList [{:keys [flex get-cols height rowHeight]
+(defn FDTList [{:keys [fixed flex get-cols height rowHeight]
                 :or {height  200
                      rowHeight 32
                      get-cols identity}} owner]
@@ -83,7 +83,9 @@
            :on-blur        #(do (put! blur :blur) true)
            :on-mouse-up    #(do (put! refocus true) true)}
           (apply Table #js {:width       width
-                            :maxHeight   height
+                            :maxHeight   (if (= height :full)
+                                           (-> items count inc (* rowHeight))
+                                           height)
                             :rowGetter   #(get-cols (nth items %))
                             :rowsCount   (count items)
                             :scrollToRow highlighted
@@ -94,7 +96,7 @@
                    (map #(Column #js {:dataKey        %
                                       :cellRenderer   r
                                       :cellDataGetter cell-getter
-                                      :flexGrow       (get flex % 1)
-                                      :width          1})
+                                      :flexGrow       (if (get fixed %) 0 (get flex % 1))
+                                      :width          (get fixed % 0)})
                         (-> items first get-cols count range))))])))))
 

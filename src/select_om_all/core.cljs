@@ -83,11 +83,13 @@
     (assoc state :autocompleter autocompleter)))
 
 (defn AutoComplete [{:keys [input-component list-component
-                            on-highlight on-change simple?]
+                            on-highlight on-change simple?
+                            fixed width min-width]
                      :or   {input-component Input
                             list-component  FDTList
                             on-highlight    identity
-                            on-change       identity}
+                            on-change       identity
+                            min-width       0}
                      :as   props} owner]
   (reify
     om/IDisplayName (display-name [_] "AutoComplete")
@@ -112,7 +114,7 @@
             (when (not= choice :select-om-all.logic/none)
               (om/set-state! owner :value choice))
             (recur)))
-        state))
+        (assoc state :width width :fixed fixed)))
     om/IDidMount
     (did-mount [_]
       (when simple?
@@ -149,4 +151,4 @@
           :popup        (om/build list-component props {:state state})
           :open?        (:open? state)
           :resize-ch    (:resize! state)
-          :set-width-fn #(om/set-state! owner :width %)})]))))
+          :set-width-fn (when-not width #(om/set-state! owner :width (max min-width %)))})]))))
