@@ -1,5 +1,6 @@
 (ns select-om-all.utils
-  (:require [cljs.core.async :refer [put!]]))
+  (:require [cljs.core.async :refer [put!]]
+            clojure.string))
 
 ;;; Default search for local datasource: case-insensitive substring match
 
