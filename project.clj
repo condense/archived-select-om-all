@@ -1,4 +1,4 @@
-(defproject condense/select-om-all "0.1.3"
+(defproject condense/select-om-all "0.1.4"
   :description "Flexible select-style component for use in Om apps"
   :url "https://github.com/condense/select-om-all"
 
