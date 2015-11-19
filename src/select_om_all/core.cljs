@@ -78,7 +78,7 @@
                :resize!     (chan)
                :simple?     simple?
                :value       (or default value)}
-        autocompleter (autocompleter state)]
+        autocompleter (autocompleter state owner)]
     (a/pipe (a/map vector [mousedown mouseup]) mouseselect)
     (assoc state :autocompleter autocompleter)))
 
@@ -107,6 +107,7 @@
               [:highlight n] (om/set-state! owner :highlighted n)
               [:unhighlight n] (om/set-state! owner :highlighted nil)
               [:loading x] (om/set-state! owner :loading? x)
+              [:set-list-footer x] (om/set-state! owner :list-footer x)
               :else nil)
             (recur)))
         (go-loop []

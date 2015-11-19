@@ -68,7 +68,7 @@
       (a/put! (om/get-state owner :resize!) true))
     om/IRenderState
     (render-state [_ {:keys [keycodes mousedown mouseup hover highlighted
-                             hold? blur refocus items loading? selecting?
+                             hold? blur refocus items loading? list-footer selecting?
                              value width]}]
       (html
        (if (or loading? (zero? (count items)))
@@ -98,5 +98,6 @@
                                       :cellDataGetter cell-getter
                                       :flexGrow       (if (get fixed %) 0 (get flex % 1))
                                       :width          (get fixed % 0)})
-                        (-> items first get-cols count range))))])))))
+                        (-> items first get-cols count range))))
+          list-footer])))))
 

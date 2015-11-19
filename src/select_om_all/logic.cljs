@@ -3,7 +3,8 @@
   (:require [cljs.core.match :refer-macros [match]]
             [cljs.core.async :refer [>! <! alts! chan] :as a]
             [select-om-all.reactive :as r]
-            [select-om-all.utils :refer [index-of]]))
+            [select-om-all.utils :refer [index-of]]
+            [om.core :as om]))
 
 ;;; Inspiration and some code are from
 ;;; David Nolen's “Comparative Literate Programming”,
@@ -28,7 +29,7 @@
   `direction` :: Direction
   -> Number"
   [items current direction]
-  (let [cnt (count items)]
+  (let [cnt (count (items))]
     (match [current direction]
       [::none :next] 0
       [::none :previous] (dec cnt)
@@ -89,7 +90,7 @@
         (if (= e :select)
           (do
             (if (number? highlighted)
-              (>! out [:select (and highlighted (nth items highlighted))])
+              (>! out [:select (and highlighted (nth (items) highlighted))])
               (>! out [:select highlighted]))
             (recur highlighted highlighted))
           (do
@@ -130,11 +131,14 @@
   `:simple?`     :: Boolean
   `:completions` :: String -> Channel of Items
   -> Channel of [:select (Item | ::none)]"
-  [{:keys [focus query select cancel list-ctrl simple? completions] :as opts}]
-  (let [out (chan)
+  [{:keys [focus query select cancel list-ctrl simple? completions] :as opts}
+   owner]
+  (let [get-items #(om/get-state owner :items)
+        out (chan)
         [query raw] (a/split r/throttle-msg? query)]
     (go-loop [items nil focused false hl nil]
-      (let [[v sc] (alts! [raw cancel focus query select])]
+      (let [[v sc] (alts! [raw cancel focus query select])
+            items (get-items)]
         (cond
 
           (= sc focus)
@@ -169,7 +173,7 @@
                 _ (>! (:query-ctrl opts) (now))
                 choice (<! (menu-proc (r/concat [(or hl ::pass) v] select)
                                       (a/merge [raw cancel])
-                                      list-ctrl items))]
+                                      list-ctrl get-items))]
             (reset! (:selecting? opts) false)
             (>! list-ctrl [:show false])
             (if (= choice ::cancel)
