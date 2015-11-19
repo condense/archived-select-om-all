@@ -138,7 +138,7 @@
                 [::set x] (om/set-state! owner :value x)
                 :else nil))))
         (when-not (or (empty? items) (= (:highlighted prev-state) highlighted))
-          (go (on-highlight (and highlighted (nth items highlighted)) highlighted)))
+          (go (on-highlight (and highlighted (nth items highlighted)) highlighted owner)))
         (when (not= (:value prev-props) (:value props))
           (om/set-state! owner :value (:value props)))))
     om/IRenderState
